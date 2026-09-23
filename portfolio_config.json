@@ -1,0 +1,775 @@
+{
+  "settings": {
+    "ollama_base_url": "http://127.0.0.1:11434",
+    "ollama_chat_endpoint": "/api/chat",
+    "ollama_tags_endpoint": "/api/tags",
+    "model": "google/gemma-4-12b",
+    "fallback_model": "openrouter/free",
+    "language": "en",
+    "num_ctx": 32000,
+    "temperature": 0.08,
+    "ollama_timeout_seconds": 1800,
+    "days_price_history": "6mo",
+    "output_folder": "reports",
+    "archive_folder": "reports/archive",
+    "cache_folder": "data/cache",
+    "log_folder": "logs",
+    "max_news_per_asset": 4,
+    "max_forum_per_asset": 5,
+    "max_web_per_asset": 5,
+    "min_data_quality_for_signal": 60,
+    "allow_ai_to_change_probabilities": false,
+    "use_trading212_api": true,
+    "t212_reconciliation_threshold_pct": 5.0,
+    "use_tradingview_public_data": true,
+    "use_social_sentiment": true,
+    "use_reddit": true,
+    "use_x_sentiment": true,
+    "use_stocktwits": true,
+    "use_sector_news": true,
+    "use_revolut_manual_research": true,
+    "use_macro_news": true,
+    "news_relevance_threshold": 60,
+    "buy_probability_threshold": 60,
+    "sell_probability_threshold": 65,
+    "ai_max_assets": 20,
+    "prioritize_manual_assets": true,
+    "always_include_portfolio": true,
+    "always_include_watchlist": true,
+    "auto_discovery_limit": 8,
+    "max_news_age_days": 2,
+    "ignore_duplicate_news": true,
+    "ignore_otc": true,
+    "use_etf_analysis": true,
+    "use_crypto_analysis": true,
+    "ai_aggressiveness": "balanced",
+    "watchlist": [
+      "AAPL",
+      "MSFT",
+      "NVDA",
+      "TSLA",
+      "GOOGL",
+      "GOOG",
+      "NEE",
+      "VWS.CO",
+      "IBE.MC",
+      "RWE.DE",
+      "ASML.AS",
+      "SAP.DE",
+      "ASML",
+      "TSM"
+    ],
+    "use_playwright_fallback": true,
+    "playwright_headless": true,
+    "playwright_timeout_seconds": 30,
+    "market_regime": {
+      "enabled": true,
+      "symbol": "EXI2.DE",
+      "cache_ttl_seconds": 3600,
+      "timeframes": {
+        "intraday_15m": {
+          "interval": "15m",
+          "period": "1d",
+          "lookback_bars": 96,
+          "enabled": true,
+          "weight": 0.5
+        },
+        "intraday_1h": {
+          "interval": "1h",
+          "period": "5d",
+          "lookback_bars": 120,
+          "enabled": true,
+          "weight": 0.7
+        },
+        "daily": {
+          "interval": "1d",
+          "period": "3mo",
+          "lookback_bars": 63,
+          "enabled": true,
+          "weight": 1.5
+        },
+        "weekly": {
+          "interval": "1wk",
+          "period": "2y",
+          "lookback_bars": 104,
+          "enabled": true,
+          "weight": 2.0
+        },
+        "monthly": {
+          "interval": "1mo",
+          "period": "max",
+          "lookback_bars": 120,
+          "enabled": true,
+          "weight": 1.0
+        }
+      },
+      "peak_valley": {
+        "prominence_pct": 2.0,
+        "min_distance": 5,
+        "cluster_threshold_pct": 1.0,
+        "min_prominence_bars": 3
+      },
+      "thresholds": {
+        "peak_hold_rsi_daily_min": 60,
+        "peak_hold_rsi_weekly_min": 55,
+        "peak_hold_price_above_sma20_daily": true,
+        "peak_hold_price_above_sma50_weekly": true,
+        "peak_hold_macd_hist_declining": true,
+        "peak_hold_consolidation_days_min": 5,
+        "peak_hold_consolidation_range_pct": 2.5,
+        "declining_price_below_sma20_daily": true,
+        "declining_price_below_sma50_daily": true,
+        "declining_macd_bearish_cross": true,
+        "declining_rsi_daily_max": 50,
+        "declining_adx_min": 25,
+        "declining_lower_highs": true,
+        "declining_lower_lows": true,
+        "must_buy_near_200dma_tolerance_pct": 2.0,
+        "must_buy_near_52w_low_tolerance_pct": 5.0,
+        "must_buy_rsi_daily_max": 35,
+        "must_buy_rsi_weekly_max": 40,
+        "must_buy_volume_spike_threshold": 2.0,
+        "must_buy_supertrend_flip_bullish": true,
+        "must_buy_macd_weekly_bullish": true,
+        "min_timeframes_agree": 2,
+        "confidence_threshold": 0.75
+      },
+      "news": {
+        "max_age_hours": 48,
+        "min_relevance_score": 60,
+        "max_articles_per_symbol": 5
+      },
+      "finviz": {
+        "enabled": true,
+        "get_fundamentals": true,
+        "get_sector_breadth": true,
+        "sectors": [
+          "Technology",
+          "Healthcare",
+          "Financial",
+          "Consumer Cyclical",
+          "Industrial",
+          "Energy",
+          "Utilities",
+          "Real Estate",
+          "Basic Materials",
+          "Consumer Defensive",
+          "Communication Services"
+        ]
+      },
+      "reporting": {
+        "include_in_main_report": true,
+        "include_charts": false,
+        "include_json": true
+      }
+    },
+    "global_news_queries": [
+      "major global stock market news affecting long-term investors",
+      "AI semiconductor GPU datacenter cloud infrastructure latest developments",
+      "renewable energy battery storage nuclear grid modernization latest news",
+      "Federal Reserve ECB inflation interest rates macroeconomic news",
+      "major earnings surprises guidance changes analyst upgrades downgrades",
+      "major mergers acquisitions strategic partnerships technology sector",
+      "global lithium uranium hydrogen rare earth supply chain news",
+      "Bitcoin Ethereum institutional adoption ETF regulation news"
+    ],
+    "discovery_queries": [
+      "high quality growth stocks with improving fundamentals",
+      "companies reporting strong earnings and raising guidance",
+      "AI infrastructure companies benefiting from datacenter expansion",
+      "semiconductor equipment suppliers with growing demand",
+      "battery materials lithium uranium hydrogen investment opportunities",
+      "renewable energy grid modernization electrification companies",
+      "companies with significant insider buying",
+      "companies with expanding margins and accelerating revenue growth",
+      "undervalued technology leaders after earnings selloff",
+      "emerging companies supplying Nvidia AMD TSMC Microsoft"
+    ],
+    "odysseus_url": "http://localhost:7000",
+    "odysseus_model": "",
+    "odysseus_probe_timeout": 10,
+    "auto_discover_min_value": 1.0,
+    "skip_no_data_auto_discovered": true,
+    "lm_studio_base_url": "http://100.88.219.120:1234/v1",
+    "lm_studio_model": "deepseek-r1-finance-reasoning-14b",
+    "lm_studio_timeout": 7200,
+    "lm_studio_context_tokens": 32000,
+    "lm_studio_max_output_tokens": 8192,
+    "decision_model": "deepseek-r1-finance-reasoning-14b",
+    "writer_model": "google/gemma-4-12b",
+    "max_parallel_requests": 1,
+    "openrouter_base_url": "https://openrouter.ai/api/v1",
+    "openrouter_model": "openrouter/free",
+    "openrouter_context_tokens": 62000,
+    "openrouter_max_output_tokens": 8192,
+    "provider": "lmstudio"
+  },
+  "assets": [
+    {
+      "broker_symbol": "BTCUSD",
+      "yahoo_symbol": "BTC-USD",
+      "tradingview_symbol": "BITSTAMP:BTCUSD",
+      "name": "Bitcoin",
+      "group": "CRYPTO",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Bitcoin BTC-USD price halving macro risk on risk off",
+      "aliases": [
+        "Bitcoin",
+        "BTCUSD",
+        "BTC-USD"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "ETHUSD",
+      "yahoo_symbol": "ETH-USD",
+      "tradingview_symbol": "BITSTAMP:ETHUSD",
+      "name": "Ethereum",
+      "group": "CRYPTO",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Ethereum ETH-USD price L2 staking rollups",
+      "aliases": [
+        "Ethereum",
+        "ETHUSD",
+        "ETH-USD"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "SOLUSDT",
+      "yahoo_symbol": "SOL-USD",
+      "tradingview_symbol": "BINANCE:SOLUSDT",
+      "name": "Solana",
+      "group": "CRYPTO",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Solana SOL-USD chain fees DeFi NFT activity",
+      "aliases": [
+        "Solana",
+        "SOLUSDT",
+        "SOL-USD"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "KASUSDT",
+      "yahoo_symbol": "KAS-USD",
+      "tradingview_symbol": "BINANCE:KASUSDT",
+      "name": "Kaspa",
+      "group": "CRYPTO",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Kaspa KAS-USD PoW DAG mining narrative",
+      "aliases": [
+        "Kaspa",
+        "KASUSDT",
+        "KAS-USD"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "SUIUSDT",
+      "yahoo_symbol": "SUI-USD",
+      "tradingview_symbol": "BINANCE:SUIUSDT",
+      "name": "Sui",
+      "group": "CRYPTO",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Sui SUI-USD L1 chain performance ecosystem",
+      "aliases": [
+        "Sui",
+        "SUIUSDT",
+        "SUI-USD"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "RNDRUSDT",
+      "yahoo_symbol": "RENDER-USD",
+      "tradingview_symbol": "BINANCE:RNDRUSDT",
+      "name": "Render",
+      "group": "CRYPTO",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Render RNDR-USD GPU rendering token AI narrative",
+      "aliases": [
+        "Render",
+        "RNDRUSDT",
+        "RNDR-USD"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "TAOUSDT",
+      "yahoo_symbol": "TAO-USD",
+      "tradingview_symbol": "BINANCE:TAOUSDT",
+      "name": "Bittensor / TAO",
+      "group": "CRYPTO",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Bittensor TAO-USD AI network tokenomics",
+      "aliases": [
+        "Bittensor",
+        "TAOUSDT",
+        "TAO-USD"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "WDC",
+      "yahoo_symbol": "WDC",
+      "tradingview_symbol": "NASDAQ:WDC",
+      "name": "Western Digital",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Western Digital WDC stock NAND HDD AI data center cyclicality",
+      "aliases": [
+        "Western Digital",
+        "WDC"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "DDD",
+      "yahoo_symbol": "DDD",
+      "tradingview_symbol": "NYSE:DDD",
+      "name": "3D Systems",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "3D Systems DDD stock 3D printing earnings volatility",
+      "aliases": [
+        "3D Systems",
+        "DDD"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "TSLA",
+      "yahoo_symbol": "TSLA",
+      "tradingview_symbol": "NASDAQ:TSLA",
+      "name": "Tesla",
+      "group": "SHORT_TERM_TRADING",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Tesla TSLA earnings EV margins FSD guidance",
+      "aliases": [
+        "Tesla",
+        "TSLA"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "STLA",
+      "yahoo_symbol": "STLA",
+      "tradingview_symbol": "NYSE:STLA",
+      "name": "Stellantis",
+      "group": "LONG_RUN_DCA",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Stellantis STLA stock EV transition margins Europe",
+      "aliases": [
+        "Stellantis",
+        "STLA"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "SLDP",
+      "yahoo_symbol": "SLDP",
+      "tradingview_symbol": "NASDAQ:SLDP",
+      "name": "Solid Power",
+      "group": "SHORT_TERM_TRADING",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Solid Power SLDP solid state battery EV stock catalyst",
+      "aliases": [
+        "Solid Power",
+        "SLDP"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "ARM",
+      "yahoo_symbol": "ARM",
+      "tradingview_symbol": "NASDAQ:ARM",
+      "name": "Arm Holdings",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "Arm Holdings ARM stock earnings AI data center guidance valuation",
+      "aliases": [
+        "Arm Holdings",
+        "ARM"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "EXI2",
+      "yahoo_symbol": "EXI2.DE",
+      "tradingview_symbol": "XETR:EXI2",
+      "name": "iShares Dow Jones Global Titans 50 UCITS ETF",
+      "group": "LONG_RUN_DCA",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "iShares Dow Jones Global Titans 50 UCITS ETF EXI2 holdings performance",
+      "aliases": [
+        "EXI2",
+        "iShares Dow Jones Global Titans"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "BYND",
+      "yahoo_symbol": "BYND",
+      "tradingview_symbol": "NASDAQ:BYND",
+      "name": "Beyond Meat",
+      "group": "SHORT_TERM_TRADING",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "Beyond Meat BYND stock debt cash flow revenue profitability short squeeze",
+      "aliases": [
+        "Beyond Meat",
+        "BYND"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "LITM",
+      "yahoo_symbol": "LITM.L",
+      "tradingview_symbol": "LSE:LITM",
+      "name": "iShares Lithium & Battery Producers UCITS ETF",
+      "group": "LONG_RUN_DCA",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "iShares Lithium Battery Producers UCITS ETF LITM lithium battery producers holdings",
+      "aliases": [
+        "LITM",
+        "iShares Lithium Battery Producers"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "C7A0",
+      "yahoo_symbol": "C7A0.F",
+      "yahoo_symbol_candidates": [
+        "C7A0.F",
+        "300750.SZ",
+        "3750.HK",
+        "CYATY"
+      ],
+      "yahoo_symbol_fallbacks": [
+        "300750.SZ",
+        "3750.HK",
+        "CYATY"
+      ],
+      "tradingview_symbol": "FWB:C7A0",
+      "name": "Contemporary Amperex Technology / CATL",
+      "group": "LONG_RUN_DCA",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "CATL Contemporary Amperex Technology stock battery earnings margins EV demand sodium ion EV battery exports",
+      "aliases": [
+        "CATL",
+        "Contemporary Amperex",
+        "C7A0",
+        "300750",
+        "3750.HK"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "BYDDY",
+      "yahoo_symbol": "BYDDY",
+      "tradingview_symbol": "OTC:BYDDY",
+      "name": "BYD Company ADR",
+      "group": "LONG_RUN_DCA",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "BYD BYDDY stock earnings EV sales margins China Europe",
+      "aliases": [
+        "BYD",
+        "BYDDY",
+        "BYD Company"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "EGT",
+      "yahoo_symbol": "EGT.L",
+      "tradingview_symbol": "LSE:EGT",
+      "name": "European Green Transition",
+      "group": "SHORT_TERM_TRADING",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": null,
+      "search_query": "European Green Transition EGT London stock mining battery metals",
+      "aliases": [
+        "European Green Transition",
+        "EGT"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "AAPL",
+      "yahoo_symbol": "AAPL",
+      "tradingview_symbol": "NASDAQ:AAPL",
+      "name": "Apple",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 15,
+      "search_query": "Apple AAPL earnings guidance iPhone services AI margins",
+      "aliases": [
+        "Apple",
+        "AAPL"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "AMD",
+      "yahoo_symbol": "AMD",
+      "tradingview_symbol": "NASDAQ:AMD",
+      "name": "Advanced Micro Devices",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 10,
+      "search_query": "AMD stock earnings AI GPU data center margins guidance",
+      "aliases": [
+        "AMD",
+        "Advanced Micro Devices"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "INTC",
+      "yahoo_symbol": "INTC",
+      "tradingview_symbol": "NASDAQ:INTC",
+      "name": "Intel",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 10,
+      "search_query": "Intel INTC stock earnings foundry turnaround data center margins",
+      "aliases": [
+        "Intel",
+        "INTC"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "MU",
+      "yahoo_symbol": "MU",
+      "tradingview_symbol": "NASDAQ:MU",
+      "name": "Micron Technology",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 10,
+      "search_query": "Micron MU stock earnings HBM memory DRAM NAND AI demand",
+      "aliases": [
+        "Micron",
+        "Micron Technology",
+        "MU"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "NVDA",
+      "yahoo_symbol": "NVDA",
+      "tradingview_symbol": "NASDAQ:NVDA",
+      "name": "Nvidia",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 10,
+      "search_query": "Nvidia NVDA earnings AI GPU data center Blackwell margins guidance",
+      "aliases": [
+        "Nvidia",
+        "NVDA"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "ASML",
+      "yahoo_symbol": "ASML",
+      "tradingview_symbol": "NASDAQ:ASML",
+      "name": "ASML",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "ASML stock earnings EUV orders China restrictions semiconductor capex",
+      "aliases": [
+        "ASML"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "AVGO",
+      "yahoo_symbol": "AVGO",
+      "tradingview_symbol": "NASDAQ:AVGO",
+      "name": "Broadcom",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "Broadcom AVGO earnings AI ASIC VMware margins guidance",
+      "aliases": [
+        "Broadcom",
+        "AVGO"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "MRVL",
+      "yahoo_symbol": "MRVL",
+      "tradingview_symbol": "NASDAQ:MRVL",
+      "name": "Marvell Technology",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "Marvell MRVL earnings AI networking optical interconnect data center",
+      "aliases": [
+        "Marvell",
+        "Marvell Technology",
+        "MRVL"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "QCOM",
+      "yahoo_symbol": "QCOM",
+      "tradingview_symbol": "NASDAQ:QCOM",
+      "name": "Qualcomm",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "Qualcomm QCOM earnings AI PC edge AI automotive handset guidance",
+      "aliases": [
+        "Qualcomm",
+        "QCOM"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "SNDK",
+      "yahoo_symbol": "SNDK",
+      "tradingview_symbol": "NASDAQ:SNDK",
+      "name": "Sandisk",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "Sandisk SNDK stock NAND storage AI data center earnings",
+      "aliases": [
+        "Sandisk",
+        "SNDK"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "000660.KS",
+      "yahoo_symbol": "000660.KS",
+      "tradingview_symbol": "KRX:000660",
+      "name": "SK hynix",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "SK hynix 000660.KS HBM DRAM earnings Nvidia AI memory",
+      "aliases": [
+        "SK hynix",
+        "SK Hynix",
+        "000660.KS"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "TSM",
+      "yahoo_symbol": "TSM",
+      "tradingview_symbol": "NYSE:TSM",
+      "name": "Taiwan Semiconductor Manufacturing",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "TSMC TSM earnings AI chips advanced packaging capex margins",
+      "aliases": [
+        "TSMC",
+        "Taiwan Semiconductor",
+        "TSM"
+      ],
+      "enabled": true
+    },
+    {
+      "broker_symbol": "VRT",
+      "yahoo_symbol": "VRT",
+      "tradingview_symbol": "NYSE:VRT",
+      "name": "Vertiv",
+      "group": "TECH_PIE",
+      "quantity": null,
+      "average_price": null,
+      "target_weight_pct": 5,
+      "search_query": "Vertiv VRT earnings data center power cooling AI infrastructure backlog margins",
+      "aliases": [
+        "Vertiv",
+        "VRT"
+      ],
+      "enabled": true
+    }
+  ],
+  "portfolio_rules": {
+    "rule_1": "Nikdy nekupuj len preto, že grafík vyzerá pekne. Musí byť fundamentálny dôvod.",
+    "rule_2": "Ak buy probability > 50%, overuj či nie je to pump & dump.",
+    "rule_3": "Ak máš pozíciu a buy probability opäť > 50%, zvážiť add-on DCA.",
+    "rule_4": "Sell probability > 80% = exit bez emócií. Thesis môže byť zmenená.",
+    "rule_5": "Diverzifikácia - maximálne 20% v jednej akcii.",
+    "rule_6": "Profit taking: Keď je +10%, zvážiť take profit 50% pozície.",
+    "rule_7": "Stop loss: -5% pre growth stocks, -10% pre dividend plays."
+  },
+  "symbol_aliases": {
+    "VWSBD": "VWS.CO",
+    "NKTD": "NKT.CO",
+    "EOAND": "ORSTED.CO",
+    "BY6D": "BYD.F",
+    "C7A0D": "CATL.F",
+    "NDX1D": "^NDX",
+    "TL0D": "TSLA.DE",
+    "BYND1": "BYND.DE",
+    "N3ID": "NXTD.AS",
+    "EGTL": "EGTL.L",
+    "LITMM": "LITH.L",
+    "IBEE": "IBEE.L",
+    "EDPR": "EDPR.LS",
+    "ABBNSEQ": "ABB",
+    "PRYMY": "PRYMY",
+    "HTHIY": "HTHIY",
+    "DNNGY": "DNNGY",
+    "C7A0": "C7A0.F"
+  }
+}

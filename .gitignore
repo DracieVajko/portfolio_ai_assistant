@@ -1,0 +1,77 @@
+# Runtime logs
+logs/
+*.log
+*.logs
+
+# Generated reports and artifacts
+reports/
+!reports/.gitkeep
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+*.env
+*.env.local
+.env.*
+!env.example
+
+# Dependencies
+venv/
+.venv/
+node_modules/
+
+# Test output
+test-output/
+coverage/
+
+# Debug and temp
+debug/
+temp/
+tmp/
+*.tmp
+*.temp
+*.bak
+
+# AI model caches and weights
+*.safetensors
+*.gguf
+*.bin
+*.onnx
+
+# Cache directories
+.cache/
+.cache/
+data/cache/
+
+# Generated JSON/CSV from runs
+reports/*.json
+reports/*.csv
+reports/*_diagnostic*
+reports/raw_endpoint_dump*
+reports/failed_tickers*
+reports/reconciliation_diagnostic*
+reports/ai_context/
+reports/debug/
+reports/archive/
+reports/summary/
+reports/t212_test*
+reports/portfolio_analysis*
+reports/run_manifest*
