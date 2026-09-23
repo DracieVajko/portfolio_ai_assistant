@@ -93,3 +93,7 @@ install_requirements.bat
 cleanup.bat
 data/
 *.md.bak
+
+# Root-level docs and plans
+EXI2_MARKET_REGIME_PLAN.md
+ROBUST_EXI2_REGIME_SPEC.md
