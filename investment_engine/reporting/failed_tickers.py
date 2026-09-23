@@ -21,8 +21,14 @@ def collect_failed_tickers(
 ) -> list[dict[str, Any]]:
     """Build the failed-ticker ledger for one run.
 
-    A display symbol lands here when its Yahoo mapping is UNRESOLVED or a
-    market-data fetch already failed for it this run. Never raises.
+    Classification rules:
+    - HELD_UNRESOLVED: nonzero broker qty/value AND has T212 instrument ID.
+      Truly unresolvable holding requiring broker data fallback.
+    - WATCHLIST: no broker holding (qty=0, value=0), only configured/research.
+      Not described as an unresolved holding.
+    - STALE_ALIAS: neither held nor actively watched; stale config entry.
+    Zero-quantity, zero-value watchlist/config items are NEVER described
+    as unresolved holdings.
     """
     try:
         from investment_engine.portfolio.symbols import support_state
@@ -44,15 +50,32 @@ def collect_failed_tickers(
             if state != "UNRESOLVED" and (yahoo or "") not in failed_set:
                 continue
             pos = by_display.get(disp, {})
+            qty = pos.get("qty", 0) or 0
+            value_eur = pos.get("value_eur", 0) or 0
+            t212_id = pos.get("t212", "") or ""
+            has_broker_holding = qty != 0 and value_eur != 0 and bool(t212_id)
+            # Classify the item type.
+            if has_broker_holding:
+                category = "HELD_UNRESOLVED"
+            elif qty == 0 and value_eur == 0:
+                # Watchlist-only or stale config alias: not a holding.
+                category = "WATCHLIST" if t212_id == "" else "STALE_ALIAS"
+            else:
+                category = "WATCHLIST"
+            # Skip watchlist-only and stale alias items from the failed ledger
+            # (they are not unresolved holdings).
+            if category != "HELD_UNRESOLVED":
+                continue
             out.append({
                 "display": disp,
-                "t212_id": pos.get("t212", ""),
+                "t212_id": t212_id,
                 "yahoo_attempted": yahoo or "",
                 "support_state": state,
                 "fetch_failed": (yahoo or "") in failed_set,
-                "qty": pos.get("qty", 0) or 0,
-                "value_eur": pos.get("value_eur", 0) or 0,
-                "alias_hint": {disp: "<YAHOO_SYMBOL>"},
+                "qty": qty,
+                "value_eur": value_eur,
+                "alias_hint": {disp: "<YahooSymbol>"},
+                "category": category,
             })
         out.sort(key=lambda e: (-(e.get("value_eur") or 0), e.get("display") or ""))
         return out
@@ -66,27 +89,28 @@ def render_failed_tickers_md(failed: list[dict[str, Any]], run_id: str = "") -> 
     if not failed:
         return ""
     ts = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M %Z")
+    held_failed = [e for e in failed if e.get("category") == "HELD_UNRESOLVED"]
     lines = [
         "# Failed Ticker Resolution",
         f"Run: `{run_id}` | {ts}",
         "",
-        f"Total unresolvable: **{len(failed)}**",
+        f"Total unresolvable holdings: **{len(held_failed)}**",
         "",
-        "These holdings have no usable Yahoo Finance symbol: mapping is UNRESOLVED",
+        "These HELD positions have no usable Yahoo Finance symbol: mapping is UNRESOLVED",
         "or the market-data fetch already failed this run. They are valued from",
         "broker data only — no technicals, no news, no AI signal.",
         "",
-        "## Unresolvable tickers",
+        "## Unresolvable holdings",
         "",
-        "| Display | T212 ID | Attempted Yahoo | State | Fetch failed | Qty | Value € |",
-        "|---|---|---|---|---|---|---|",
+        "| Display | T212 ID | Attempted Yahoo | State | Fetch failed | Qty | Value € | Category |",
+        "|---|---|---|---|---|---|---|---|",
     ]
-    for e in failed:
+    for e in held_failed:
         lines.append(
             f"| {e.get('display', '?')} | {e.get('t212_id', '') or '—'} | "
             f"{e.get('yahoo_attempted', '') or '—'} | {e.get('support_state', '?')} | "
             f"{'yes' if e.get('fetch_failed') else 'no'} | {e.get('qty', 0)} | "
-            f"{e.get('value_eur', 0):,.2f} |"
+            f"{e.get('value_eur', 0):,.2f} | {e.get('category', '?')} |"
         )
     lines += [
         "",

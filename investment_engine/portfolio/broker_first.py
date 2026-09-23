@@ -333,6 +333,45 @@ class ReconciliationResult:
     data_quality: str = "UNKNOWN"
     notes: List[str] = field(default_factory=list)
 
+    def to_reconciliation_dict(self) -> dict:
+        """Convert to the dict format consumed by report writers."""
+        return {
+            "total_equity": self.broker_total_equity_eur,
+            "positions_value": self.sum_deduplicated_broker_position_values_eur,
+            "reported_cash": self.total_reported_cash_eur,
+            "free_cash": self.reported_free_cash_eur,
+            "pie_cash": self.pie_cash_eur,
+            "blocked_cash": self.reported_blocked_cash_eur,
+            "implied_cash": round(self.broker_total_equity_eur - self.sum_deduplicated_broker_position_values_eur, 2),
+            "cash_delta": self.reconciliation_delta_eur,
+            "derived_total": round(self.sum_deduplicated_broker_position_values_eur + self.total_reported_cash_eur, 2),
+            "diff": self.reconciliation_delta_eur,
+            "threshold": self.tolerance_eur,
+            "status": self.reconciliation_status,
+        }
+
+    @classmethod
+    def from_reconciliation_dict(cls, d: dict) -> "ReconciliationResult":
+        """Create from the dict format produced by compute_reconciliation."""
+        return cls(
+            broker_total_equity_eur=d.get("total_equity", 0.0),
+            reported_free_cash_eur=d.get("free_cash", 0.0),
+            reported_blocked_cash_eur=d.get("blocked_cash", 0.0),
+            pie_cash_eur=d.get("pie_cash", 0.0),
+            total_reported_cash_eur=d.get("reported_cash", 0.0),
+            pending_cash_adjustments_eur=0.0,
+            expected_open_positions_value_eur=round(d.get("total_equity", 0.0) - d.get("reported_cash", 0.0), 2),
+            sum_raw_broker_position_values_eur=d.get("positions_value", 0.0),
+            sum_deduplicated_broker_position_values_eur=d.get("positions_value", 0.0),
+            sum_externally_computed_position_values_eur=0.0,
+            sum_excluded_values_eur=0.0,
+            reconciliation_delta_eur=d.get("cash_delta", 0.0),
+            tolerance_eur=d.get("threshold", 0.0),
+            reconciliation_status=d.get("status", "UNKNOWN"),
+            data_quality="OK" if d.get("status") == "PASS" else "DATA_QUALITY_FAIL",
+            notes=[],
+        )
+
 
 # ---------------------------------------------------------------------------
 # FX: broker-implied calibration, live rates, static fallback

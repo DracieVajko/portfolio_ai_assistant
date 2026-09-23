@@ -847,15 +847,35 @@ DECISIONS:
     except Exception:
         pass
     earnings_radar = _format_earnings_radar(earnings_status, portfolio_names, unavailable_earnings)
-    # Trade safety: reconcile-gated BUY demotion applied once to the shared
-    # canonical mapping AND rows, before priority/KPI/PIE/AI rendering.
+    # Build canonical snapshot once; all reconciliation consumers use it.
+    _snap = None
+    _recon_result = None
+    _recon = {"total_equity": 0, "positions_value": 0, "implied_cash": 0,
+              "reported_cash": 0, "cash_delta": 0, "threshold": 0, "status": "UNKNOWN"}
     try:
-        from investment_engine.reporting.regime_report import (
-            apply_trade_safety as _safety,
-            compute_reconciliation as _recon_fn,
+        from investment_engine.portfolio.broker_first import (
+            build_account_snapshot as _build_snap,
+            get_cached_catalog as _get_cat,
+            reconcile_snapshot as _reconcile_snap,
         )
-        _recon = _recon_fn(t212_data, portfolio_rows)
-        # Sanitized observability record: numerics + endpoint names only.
+        from trading212_portfolio import get_live_fx_rates as _live_fx
+        _dsum = (t212_data.get("account_summary", {}) or {}) if isinstance(t212_data, dict) else {}
+        _dpos = _dsum.get("raw_positions") or _dsum.get("all_positions") or (t212_data.get("all_positions", []) if isinstance(t212_data, dict) else [])
+        _snap = _build_snap(
+            {"free": _dsum.get("cash_free", 0), "pieCash": _dsum.get("cash_pie", 0),
+             "blocked": _dsum.get("cash_blocked", 0), "invested": _dsum.get("invested", 0),
+             "total": _dsum.get("total_equity", 0), "ppl": _dsum.get("unrealized_pnl_eur", 0)},
+            _dpos, None, known_clean=known_clean, live_rates=(_live_fx().get("rates") or {}),
+            catalog=_get_cat() or None,
+        )
+        _recon_result = _reconcile_snap(_snap)
+        _recon = _recon_result.to_reconciliation_dict()
+    except Exception as exc:
+        logger.debug("Snapshot build skipped: %s", exc)
+    # Trade safety: reconcile-gated BUY demotion applied once.
+    try:
+        from investment_engine.reporting.regime_report import apply_trade_safety as _safety
+        # Sanitized observability record.
         logger.info(
             "Reconciliation diagnostic | endpoints=/equity/account/cash,/equity/portfolio"
             " | total=%.2f positions=%.2f implied=%.2f reported=%.2f delta=%+.2f threshold=%.2f status=%s",
@@ -863,24 +883,19 @@ DECISIONS:
             _recon.get("implied_cash", 0), _recon.get("reported_cash", 0),
             _recon.get("cash_delta", 0), _recon.get("threshold", 0), _recon.get("status"),
         )
-        ai_recs = _apply_fail_guards(ai_recs, _recon["status"])
-        _safety(canonical_map, portfolio_rows, unified_technicals, _recon["status"], earnings_status)
+        if _recon_result is not None:
+            ai_recs = _apply_fail_guards(ai_recs, _recon["status"])
+            _safety(canonical_map, portfolio_rows, unified_technicals, _recon["status"], earnings_status)
     except Exception as exc:
         logger.debug("Trade safety pass skipped: %s", exc)
     priority_table = _build_priority_actions_table(
         portfolio_rows, earnings_status, unified_technicals, canonical_map=canonical_map
     )
-    # Broker-first reconciliation diagnostic (CSV + Markdown, best-effort).
-    # Never blocks the report; never claims a loss.
+    # Broker-first reconciliation diagnostic (CSV + Markdown).
+    # Uses the same canonical snapshot built above; never recalculates.
     try:
         from investment_engine.portfolio.broker_first import (
-            build_account_snapshot as _build_snap,
-        )
-        from investment_engine.portfolio.broker_first import (
             build_diagnostic_rows as _diag_rows,
-        )
-        from investment_engine.portfolio.broker_first import (
-            reconcile_snapshot as _reconcile_snap,
         )
         from investment_engine.portfolio.broker_first import (
             write_diagnostic_csv as _write_dcsv,
@@ -888,58 +903,28 @@ DECISIONS:
         from investment_engine.portfolio.broker_first import (
             write_diagnostic_markdown as _write_dmd,
         )
-        try:
-            from trading212_portfolio import get_live_fx_rates as _live_fx
-            _diag_fx = (_live_fx().get("rates") or {})
-        except Exception:
-            _diag_fx = {}
-        try:
-            from investment_engine.portfolio.broker_first import get_cached_catalog as _get_cat
-            _diag_catalog = _get_cat()
-        except Exception:
-            _diag_catalog = {}
-        _dsum = (t212_data.get("account_summary", {}) or {}) if isinstance(t212_data, dict) else {}
-        # Raw broker rows first (audit-grade); parsed rows are NOT re-parsed.
-        _dpos = _dsum.get("raw_positions") or []
-        if not _dpos:
-            _dpos = _dsum.get("all_positions") or (t212_data.get("all_positions", []) if isinstance(t212_data, dict) else [])
-        _snap = _build_snap(
-            {"free": _dsum.get("cash_free", 0), "pieCash": _dsum.get("cash_pie", 0),
-             "blocked": _dsum.get("cash_blocked", 0), "invested": _dsum.get("invested", 0),
-             "total": _dsum.get("total_equity", 0), "ppl": _dsum.get("unrealized_pnl_eur", 0)},
-            _dpos, None, known_clean=known_clean, live_rates=_diag_fx or None,
-            catalog=_diag_catalog or None,
-        )
-        _diag_recon = _reconcile_snap(_snap)
-        _drows, _dsummary = _diag_rows(_snap)
-        _dsummary["reconciliation_status"] = _diag_recon.reconciliation_status
-        _dsummary["reconciliation_delta_eur"] = _diag_recon.reconciliation_delta_eur
-        _dsummary["expected_open_positions_value_eur"] = _diag_recon.expected_open_positions_value_eur
-        _dsummary["sum_deduplicated_broker_position_values_eur"] = \
-            _diag_recon.sum_deduplicated_broker_position_values_eur
-        _dsummary["sum_raw_broker_position_values_eur"] = \
-            _diag_recon.sum_raw_broker_position_values_eur
-        _dout = Path("reports")
-        _dout.mkdir(parents=True, exist_ok=True)
-        _write_dcsv(_drows, _dout / "reconciliation_diagnostic.csv")
-        _write_dmd(_drows, _dsummary, _dout / "reconciliation_diagnostic.md")
-        logger.info("Reconciliation diagnostic written: %s rows=%d status=%s",
-                    _dout, len(_drows), _dsummary.get("reconciliation_status"))
+        if _snap is not None and _recon_result is not None:
+            _drows, _dsummary = _diag_rows(_snap)
+            _dsummary["reconciliation_status"] = _recon_result.reconciliation_status
+            _dsummary["reconciliation_delta_eur"] = _recon_result.reconciliation_delta_eur
+            _dsummary["expected_open_positions_value_eur"] = _recon_result.expected_open_positions_value_eur
+            _dsummary["sum_deduplicated_broker_position_values_eur"] = \
+                _recon_result.sum_deduplicated_broker_position_values_eur
+            _dsummary["sum_raw_broker_position_values_eur"] = \
+                _recon_result.sum_raw_broker_position_values_eur
+            _dout = Path("reports")
+            _dout.mkdir(parents=True, exist_ok=True)
+            _write_dcsv(_drows, _dout / "reconciliation_diagnostic.csv")
+            _write_dmd(_drows, _dsummary, _dout / "reconciliation_diagnostic.md")
+            logger.info("Reconciliation diagnostic written: %s rows=%d status=%s",
+                        _dout, len(_drows), _dsummary.get("reconciliation_status"))
     except Exception as exc:
         logger.debug(f"Diagnostic report skipped: {type(exc).__name__}")
     if summary_section and "## Summary" not in summary_section:
         summary_section = "## Summary\n" + summary_section.strip()
     summary_section = (summary_section or "## Summary").rstrip() + "\n\n" + priority_table
-    try:
-        _recon_status = _recon.get("status") if isinstance(_recon, dict) else None
-    except NameError:
-        _recon_status = None
-    if not _recon_status:
-        try:
-            from investment_engine.reporting.regime_report import compute_reconciliation as _recon_fn3
-            _recon_status = _recon_fn3(t212_data, portfolio_rows).get("status")
-        except Exception:
-            _recon_status = "UNKNOWN"
+    # All report writers use the single canonical _recon status.
+    _recon_status = _recon.get("status") if isinstance(_recon, dict) else "UNKNOWN"
     if str(_recon_status or "").upper() == "FAIL":
         summary_section, decision_sections = _apply_fail_watchlist_sweep(
             summary_section, decision_sections, portfolio_rows, earnings_status, unified_technicals)
@@ -978,50 +963,17 @@ DECISIONS:
                else "All holdings have verified market-data mappings.")
         )
         # Build reconciliation result for AI context
+        # Uses the same canonical _recon_result; no independent calculation.
         try:
-            from investment_engine.reporting.regime_report import compute_reconciliation
-            _recon_for_context = compute_reconciliation(t212_data, portfolio_rows)
             from investment_engine.portfolio.broker_first import ReconciliationResult
-            # expected_open_positions_value_eur = total_equity - available_cash (not implied_cash!)
-            _total_equity = _recon_for_context.get("total_equity", 0.0)
-            _available_cash = _recon_for_context.get("available_cash", 0.0)
-            _expected_positions = _total_equity - _available_cash
-            reconciliation = ReconciliationResult(
-                broker_total_equity_eur=_total_equity,
-                reported_free_cash_eur=_recon_for_context.get("free_cash", 0.0),
-                pie_cash_eur=_recon_for_context.get("pie_cash", 0.0),
-                total_reported_cash_eur=_available_cash,
-                pending_cash_adjustments_eur=0.0,
-                expected_open_positions_value_eur=round(_expected_positions, 2),
-                sum_raw_broker_position_values_eur=_recon_for_context.get("positions_value", 0.0),
-                sum_deduplicated_broker_position_values_eur=_recon_for_context.get("positions_value", 0.0),
-                sum_externally_computed_position_values_eur=0.0,
-                sum_excluded_values_eur=0.0,
-                reconciliation_delta_eur=_recon_for_context.get("cash_delta", 0.0),
-                tolerance_eur=_recon_for_context.get("threshold", 0.0),
-                reconciliation_status=_recon_for_context.get("status", "UNKNOWN"),
-                data_quality="OK" if _recon_for_context.get("status") == "PASS" else "DATA_QUALITY_FAIL",
-                notes=[],
-            )
+            reconciliation = _recon_result
         except Exception:
             reconciliation = None
 
         # Build account snapshot for AI context
+        # Reuses the canonical _snap built earlier; never rebuilds.
         try:
-            from investment_engine.portfolio.broker_first import build_account_snapshot as _build_snap
-            _dsum = (t212_data.get("account_summary", {}) or {}) if isinstance(t212_data, dict) else {}
-            _dpos = _dsum.get("raw_positions") or _dsum.get("all_positions") or (t212_data.get("all_positions", []) if isinstance(t212_data, dict) else [])
-            from investment_engine.portfolio.broker_first import get_cached_catalog as _get_cat
-            _diag_catalog = _get_cat()
-            from trading212_portfolio import get_live_fx_rates as _live_fx
-            _diag_fx = (_live_fx().get("rates") or {})
-            account_snapshot = _build_snap(
-                {"free": _dsum.get("cash_free", 0), "pieCash": _dsum.get("cash_pie", 0),
-                 "blocked": _dsum.get("cash_blocked", 0), "invested": _dsum.get("invested", 0),
-                 "total": _dsum.get("total_equity", 0), "ppl": _dsum.get("unrealized_pnl_eur", 0)},
-                _dpos, None, known_clean=known_clean, live_rates=_diag_fx or None,
-                catalog=_diag_catalog or None,
-            )
+            account_snapshot = _snap if _snap is not None else None
         except Exception:
             account_snapshot = None
 
