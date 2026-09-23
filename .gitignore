@@ -75,3 +75,21 @@ reports/summary/
 reports/t212_test*
 reports/portfolio_analysis*
 reports/run_manifest*
+
+# Old project versions and backups (do not commit)
+AsistantV5/
+portfolio-invest-assistant-clean/
+Zalohy/
+experimental/
+PIEs/
+docs/
+runtime/
+accounting/
+trading212/
+
+# Temporary scripts and files
+scripts/
+install_requirements.bat
+cleanup.bat
+data/
+*.md.bak
