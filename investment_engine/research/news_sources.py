@@ -355,7 +355,8 @@ class EnhancedNewsFetcher:
             items = fetcher.fetch_market_news(queries, limit_per_query=3)
             merged: list[dict] = []
             for q_items in items.values():
-                merged.extend(q_items)
+                for item in q_items:
+                    merged.append(item.__dict__ if hasattr(item, "__dict__") else item)
             # Add category metadata
             for item in merged:
                 item["trump_category"] = category
@@ -382,7 +383,8 @@ class EnhancedNewsFetcher:
                 items = fetcher.fetch_market_news(queries, limit_per_query=3)
                 merged: list[dict] = []
                 for q_items in items.values():
-                    merged.extend(q_items)
+                    for item in q_items:
+                        merged.append(item.__dict__ if hasattr(item, "__dict__") else item)
                 for item in merged:
                     item["commodity_target"] = target
                 results[target] = merged[:5]
@@ -411,7 +413,8 @@ class EnhancedNewsFetcher:
             items = fetcher.fetch_market_news(queries, limit_per_query=3)
             merged: list[dict] = []
             for q_items in items.values():
-                merged.extend(q_items)
+                for item in q_items:
+                    merged.append(item.__dict__ if hasattr(item, "__dict__") else item)
             for item in merged:
                 item["analyst_target"] = symbol
             if merged:

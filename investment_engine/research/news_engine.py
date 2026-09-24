@@ -638,7 +638,10 @@ class StrictNewsFetcher:
         results: dict[str, list[NewsItem]] = {}
         for category, queries in _trump_categories.items():
             items = self.fetch_market_news(queries, limit_per_query=3)
-            results[category] = items
+            merged: list[NewsItem] = []
+            for q_items in items.values():
+                merged.extend(q_items)
+            results[category] = merged[:5]
         return results
 
 
