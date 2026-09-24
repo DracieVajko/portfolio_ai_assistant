@@ -1240,6 +1240,7 @@ class AIContextReportBuilder:
         catalog_meta: dict | None = None,
         run_id: str = "",
         model_info: dict | None = None,  # New: model attribution info
+        news_context_path: str | None = None,
     ) -> str:
         """Build the complete AI context report."""
         lines: list[str] = []
@@ -1275,6 +1276,14 @@ class AIContextReportBuilder:
         # 8. Model Attribution & Sources (NEW)
         if model_info:
             lines.append(self._build_model_attribution(model_info))
+
+        # 9. News context file path
+        if news_context_path:
+            lines.append("")
+            lines.append("## News Context")
+            lines.append("")
+            lines.append(f"News context file: `{news_context_path}`")
+            lines.append("Contains all news sources: portfolio holdings, Slovak news, Reddit, Trump policy watch, commodities/crypto, analyst recommendations.")
 
         return "\n".join(lines).rstrip() + "\n"
 

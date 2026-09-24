@@ -14,7 +14,12 @@ from investment_engine.config.settings import EngineSettings
 from investment_engine.providers.factory import ProviderFactory
 from investment_engine.research.market_data import analyst_consensus, fetch_recent_headlines, recent_earnings_date
 from investment_engine.research.market_regime import EXI2RegimeAnalyzer
-from investment_engine.research.news_engine import StrictNewsFetcher, NewsItem, analyze_news_sentiment
+from investment_engine.research.news_engine import (
+    StrictNewsFetcher, NewsItem, analyze_news_sentiment,
+)
+from investment_engine.research.news_sources import (
+    EnhancedNewsFetcher, NewsContextBuilder,
+)
 from investment_engine.research.pies import PieLoader
 from investment_engine.reporting.regime_report import (
     RegimeReportGenerator,
@@ -135,12 +140,23 @@ def _fetch_t212_data(settings_dict: dict) -> dict[str, Any] | None:
         return {"status": "failed", "error": str(e)}
 
 
-def _fetch_all_news_parallel(settings_dict: dict, assets: List[Dict[str, Any]], max_workers: int = 8) -> tuple[dict, list[NewsItem]]:
-    """Fetch news for assets in parallel - all enabled assets, not just top 10."""
+def _fetch_all_news_parallel(settings_dict: dict, assets: List[Dict[str, Any]], max_workers: int = 8) -> tuple[dict, list[NewsItem], dict, dict, dict, dict, dict, str | None]:
+    """Fetch news for assets in parallel - all enabled assets, not just top 10.
+
+    Returns (news_by_symbol, all_news_items, trump_tracking, commodity_news,
+    analyst_news, slovak_news, reddit_news, news_context_path).
+    """
     mr_news = settings_dict.get("market_regime", {}).get("news", {})
     fetcher = StrictNewsFetcher(
         max_age_hours=mr_news.get("max_age_hours", 48),
-        min_relevance=mr_news.get("min_relevance_score", 30),  # Lower default for aggressive
+        min_relevance=mr_news.get("min_relevance_score", 30),
+    )
+
+    # Extended fetcher for Slovak, Reddit, and enhanced sources
+    enhanced_fetcher = EnhancedNewsFetcher(
+        max_age_hours=mr_news.get("max_age_hours", 48),
+        enable_slovak=True,
+        enable_reddit=True,
     )
 
     # Fetch for ALL enabled assets (not just top 10)
@@ -171,7 +187,6 @@ def _fetch_all_news_parallel(settings_dict: dict, assets: List[Dict[str, Any]], 
                 print(f"News fetch failed for {asset.get('name', 'unknown')}: {e}")
 
     # Fetch macro news (SPY, BTC) + Trump policy watch in parallel
-    # Always include macro per strategy overrides
     macro_queries = {
         "SPY": ("S&P 500", 3, None),
         "BTC": ("Bitcoin", 2, None),
@@ -192,7 +207,45 @@ def _fetch_all_news_parallel(settings_dict: dict, assets: List[Dict[str, Any]], 
             except Exception:
                 pass
 
-    return news_by_symbol, []
+    # Fetch Slovak news (sme.sk, pravda.sk, aktuality.sk)
+    symbols_list = [a.get("symbol", "") for a in priority_assets if a.get("symbol")]
+    companies_list = [a.get("name", "") for a in priority_assets if a.get("name")]
+    slovak_news = fetcher.fetch_slovak_news(symbols=symbols_list, companies=companies_list)
+
+    # Fetch Reddit discussions
+    reddit_queries = [f"{a.get('name', a.get('symbol', ''))} stock news" for a in priority_assets[:5]]
+    reddit_news = fetcher.fetch_reddit_search(reddit_queries, limit_per_query=5)
+
+    # Fetch Trump tracking with categorized keywords
+    trump_tracking = fetcher.fetch_trump_tracking()
+
+    # Fetch commodity and crypto news (gold, silver, lithium, uranium, BTC, ETH)
+    commodity_targets = ["gold", "silver", "lithium", "uranium", "BTC", "ETH", "SOL"]
+    commodity_news = enhanced_fetcher.fetch_commodity_news(fetcher, commodities=commodity_targets)
+
+    # Fetch analyst recommendations
+    analyst_news = enhanced_fetcher.fetch_analyst_recommendations(fetcher, priority_assets)
+
+    # Generate news context .md file for AI
+    news_context_path = None
+    try:
+        output_dir = settings_dict.get("output_folder", "reports")
+        run_id = settings_dict.get("run_id", "")
+        ctx_builder = NewsContextBuilder()
+        news_context_path = ctx_builder.build_news_context_file(
+            news_by_symbol=news_by_symbol,
+            output_dir=output_dir,
+            run_id=run_id,
+            trump_tracking=trump_tracking,
+            commodity_news=commodity_news,
+            analyst_news=analyst_news,
+            slovak_news=slovak_news,
+            reddit_news=reddit_news,
+        )
+    except Exception as exc:
+        logger.debug("News context file generation failed: %s", exc)
+
+    return news_by_symbol, all_news_items, trump_tracking, commodity_news, analyst_news, slovak_news, reddit_news, news_context_path
 
 
 def _yahoo_symbol(asset: dict[str, Any]) -> str:
@@ -458,7 +511,27 @@ def run_engine(assets: List[Dict[str, Any]], portfolio_context: Dict[str, Any] |
         t212_data = t212_data or {"status": "failed", "reconciliation_ok": False}
 
     # 2. News (parallel, top 10 holdings)
-    news_by_symbol, all_news_items = _fetch_all_news_parallel(settings_dict, all_active_assets)
+    news_by_symbol, all_news_items, trump_tracking, commodity_news, analyst_news, slovak_news, reddit_news, news_context_path = _fetch_all_news_parallel(settings_dict, all_active_assets)
+
+    # Add Slovak and Reddit news to news_by_symbol so they appear in reports
+    for item in slovak_news:
+        d = item.__dict__
+        d.setdefault("category", "slovak")
+        src = d.get("source", "Slovak")
+        sym_key = "SLOVAK"
+        if sym_key not in news_by_symbol:
+            news_by_symbol[sym_key] = []
+        news_by_symbol[sym_key].append(d)
+        all_news_items.append(item)
+    for item in reddit_news:
+        d = item.__dict__
+        d.setdefault("category", "reddit")
+        src = d.get("source", "Reddit")
+        sym_key = "REDDIT"
+        if sym_key not in news_by_symbol:
+            news_by_symbol[sym_key] = []
+        news_by_symbol[sym_key].append(d)
+        all_news_items.append(item)
 
     # 3. Earnings (parallel, fast)
     earnings = _fetch_earnings_fast(all_active_assets)
@@ -1055,6 +1128,7 @@ DECISIONS:
             output_dir=output_dir,
             run_id=run_id,
             model_info=model_info,
+            news_context_path=news_context_path,
         )
     except Exception as exc:
         logger.warning("AI context save failed: %s", exc)
@@ -1075,6 +1149,7 @@ DECISIONS:
             output_dir=output_dir,
             run_id=str(_uuid.uuid4())[:8],
             model_info=model_info,
+            news_context_path=news_context_path,
         )
 
     # --- Two-document reporting: decision brief (concise) + snapshot (full) ---
@@ -1441,6 +1516,7 @@ def _save_ai_context(
     output_dir: Path,
     run_id: str = "",
     model_info: dict | None = None,
+    news_context_path: str | None = None,
 ) -> Path:
     """Save machine-safe AI context report using broker-first model."""
     builder = AIContextReportBuilder()
@@ -1458,6 +1534,7 @@ def _save_ai_context(
         catalog_meta=catalog_meta,
         run_id=run_id,
         model_info=model_info,
+        news_context_path=news_context_path,
     )
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     context_file = output_dir / f"ai_context_{timestamp}.md"

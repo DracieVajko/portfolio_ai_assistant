@@ -525,6 +525,122 @@ class StrictNewsFetcher:
         """Clear deduplication cache (call between report runs)."""
         self.reset_run_state()
 
+    # -----------------------------------------------------------------
+    # Slovak news sites (sme.sk, pravda.sk, aktuality.sk)
+    # -----------------------------------------------------------------
+
+    def fetch_slovak_news(self, symbols: list[str] | None = None,
+                          companies: list[str] | None = None) -> list[NewsItem]:
+        """Fetch news from Slovak news sites (sme.sk, pravda.sk, aktuality.sk).
+
+        Filters by symbols/company names if provided.
+        """
+        import feedparser as _fp
+        cutoff = datetime.now(timezone.utc) - self.max_age
+        all_items: list[NewsItem] = []
+        _slovak_sites = [
+            ("SME", "https://www.sme.sk/rss/aktuality/"),
+            ("Pravda", "https://www.pravda.sk/rss/"),
+            ("Aktuality", "https://www.aktuality.sk/rss/"),
+        ]
+        for source_name, rss_url in _slovak_sites:
+            try:
+                resp = self._session.get(rss_url, timeout=self.timeout)
+                resp.raise_for_status()
+                feed = _fp.parse(resp.content)
+            except Exception as exc:
+                logger.debug("Slovak news fetch failed for %s: %s", source_name, exc)
+                continue
+            for entry in feed.entries:
+                try:
+                    pub_dt = self._parse_date(entry)
+                    if pub_dt is None or pub_dt < cutoff:
+                        continue
+                    title = entry.get("title", "").strip()
+                    link = entry.get("link", "").strip()
+                    if not title or not link:
+                        continue
+                    if symbols or companies:
+                        text = title.upper()
+                        if symbols and not any(s.upper() in text for s in symbols):
+                            continue
+                        if companies and not any(c.upper() in text for c in companies):
+                            continue
+                    all_items.append(NewsItem(
+                        title=title, url=link, source=source_name,
+                        published_dt=pub_dt,
+                        published_str=pub_dt.strftime("%Y-%m-%d %H:%M"),
+                        relevance_score=0,
+                        content_hash=hashlib.md5(f"{title}{link}".encode()).hexdigest()[:16],
+                        query="slovak_news",
+                    ))
+                except Exception:
+                    continue
+        return all_items
+
+    # -----------------------------------------------------------------
+    # Reddit search
+    # -----------------------------------------------------------------
+
+    def fetch_reddit_search(self, queries: list[str], limit_per_query: int = 5
+                            ) -> list[NewsItem]:
+        """Search Reddit for relevant news and discussions."""
+        cutoff = datetime.now(timezone.utc) - self.max_age
+        all_items: list[NewsItem] = []
+        for query in queries:
+            try:
+                url = f"https://www.reddit.com/search.json?q={quote_plus(query)}&limit={limit_per_query}&t=day"
+                resp = self._session.get(url, timeout=self.timeout)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception:
+                continue
+            for post in data.get("data", {}).get("children", []):
+                try:
+                    d = post.get("data", {})
+                    title = d.get("title", "").strip()
+                    permalink = d.get("permalink", "")
+                    link = f"https://reddit.com{permalink}" if permalink else d.get("url", "")
+                    created_utc = d.get("created_utc", 0)
+                    pub_dt = datetime.fromtimestamp(created_utc, tz=timezone.utc)
+                    if pub_dt < cutoff:
+                        continue
+                    source = f"r/{d.get('subreddit', '')}"
+                    all_items.append(NewsItem(
+                        title=title, url=link, source=source,
+                        published_dt=pub_dt,
+                        published_str=pub_dt.strftime("%Y-%m-%d %H:%M"),
+                        relevance_score=0,
+                        content_hash=hashlib.md5(f"{title}{link}".encode()).hexdigest()[:16],
+                        query=query,
+                    ))
+                except Exception:
+                    continue
+        return all_items
+
+    # -----------------------------------------------------------------
+    # Trump tracking with categorized keywords
+    # -----------------------------------------------------------------
+
+    def fetch_trump_tracking(self) -> dict[str, list[NewsItem]]:
+        """Fetch Trump-specific news categorized by topic area.
+
+        Categories: tariffs, greenland, mining, rare_earths, regulation, economy.
+        """
+        _trump_categories = {
+            "tariffs": ["Trump tariffs trade policy", "Trump import duty stock market"],
+            "greenland": ["Trump Greenland rare earth minerals", "Trump Arctic strategic minerals"],
+            "mining": ["Trump mining drilling policy", "Trump mineral extraction stocks"],
+            "rare_earths": ["Trump rare earth critical minerals", "Trump strategic minerals supply chain"],
+            "regulation": ["Trump regulation deregulation stocks", "Trump SEC policy market"],
+            "economy": ["Trump economy markets fiscal policy", "Trump tax trade GDP inflation"],
+        }
+        results: dict[str, list[NewsItem]] = {}
+        for category, queries in _trump_categories.items():
+            items = self.fetch_market_news(queries, limit_per_query=3)
+            results[category] = items
+        return results
+
 
 def reset_news_state(fetcher=None):
     """Per-report-run reset hook: clears _seen_hashes and per-run query cache.
